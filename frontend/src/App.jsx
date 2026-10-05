@@ -4,12 +4,16 @@ import { Navbar } from './components/Navbar';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
+import { ProviderProfile } from './pages/ProviderProfile';
+import { ProviderServices } from './pages/ProviderServices';
+import { Providers } from './pages/Providers';
 import { api } from './services/api';
 import './App.css';
 
 const MainContent = () => {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState('login'); // 'login' | 'register' | 'dashboard'
+  // View states: 'providers' | 'dashboard' | 'provider-profile' | 'provider-services' | 'login' | 'register'
+  const [currentView, setCurrentView] = useState('providers');
   const [healthStatus, setHealthStatus] = useState(null);
 
   // Check health status on mount
@@ -27,12 +31,10 @@ const MainContent = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Sync currentView with auth state
+  // When user signs in or out, intelligently set view if appropriate
   useEffect(() => {
-    if (user) {
-      setCurrentView('dashboard');
-    } else {
-      if (currentView === 'dashboard') {
+    if (!user) {
+      if (currentView === 'dashboard' || currentView === 'provider-profile' || currentView === 'provider-services') {
         setCurrentView('login');
       }
     }
@@ -47,6 +49,60 @@ const MainContent = () => {
     );
   }
 
+  // Render view depending on currentView and authentication state
+  const renderCurrentView = () => {
+    // Public directory is accessible whether authenticated or not
+    if (currentView === 'providers') {
+      return <Providers />;
+    }
+
+    // Authenticated views
+    if (user) {
+      if (currentView === 'provider-profile') {
+        if (user.role === 'provider') {
+          return (
+            <ProviderProfile 
+              onNavigateToServices={() => setCurrentView('provider-services')} 
+            />
+          );
+        }
+        return <Dashboard onNavigate={setCurrentView} />;
+      }
+
+      if (currentView === 'provider-services') {
+        if (user.role === 'provider') {
+          return (
+            <ProviderServices 
+              onNavigateToProfile={() => setCurrentView('provider-profile')}
+              onNavigateToListing={() => setCurrentView('providers')}
+            />
+          );
+        }
+        return <Dashboard onNavigate={setCurrentView} />;
+      }
+
+      // Default authenticated view: Dashboard
+      return <Dashboard onNavigate={setCurrentView} />;
+    }
+
+    // Unauthenticated views
+    if (currentView === 'register') {
+      return (
+        <Register
+          onSuccess={() => setCurrentView('dashboard')}
+          onSwitchToLogin={() => setCurrentView('login')}
+        />
+      );
+    }
+
+    return (
+      <Login
+        onSuccess={() => setCurrentView('dashboard')}
+        onSwitchToRegister={() => setCurrentView('register')}
+      />
+    );
+  };
+
   return (
     <div className="app-layout">
       <Navbar
@@ -56,23 +112,11 @@ const MainContent = () => {
       />
 
       <main className="main-content">
-        {user ? (
-          <Dashboard />
-        ) : currentView === 'register' ? (
-          <Register
-            onSuccess={() => setCurrentView('dashboard')}
-            onSwitchToLogin={() => setCurrentView('login')}
-          />
-        ) : (
-          <Login
-            onSuccess={() => setCurrentView('dashboard')}
-            onSwitchToRegister={() => setCurrentView('register')}
-          />
-        )}
+        {renderCurrentView()}
       </main>
 
       <footer className="footer">
-        <p>HelpNear Platform &bull; Day 2 Authentication &bull; MySQL & Express & React</p>
+        <p>HelpNear Platform &bull; Day 3 Provider Directory &bull; MySQL & Express & React</p>
       </footer>
     </div>
   );

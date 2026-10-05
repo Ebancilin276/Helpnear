@@ -11,15 +11,21 @@ import {
   Key, 
   Database, 
   RefreshCw,
-  Server
+  Server,
+  Building2,
+  Layers,
+  Users,
+  ArrowRight,
+  Sparkles
 } from 'lucide-react';
 
-export const Dashboard = () => {
+export const Dashboard = ({ onNavigate }) => {
   const { user, logout } = useAuth();
   const [profileData, setProfileData] = useState(user);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [apiHealth, setApiHealth] = useState(null);
   const [profileMessage, setProfileMessage] = useState('');
+  const [providerProfile, setProviderProfile] = useState(null);
 
   // Fetch fresh profile from protected route /api/auth/me
   const fetchFreshProfile = async () => {
@@ -43,7 +49,17 @@ export const Dashboard = () => {
     api.getHealth()
       .then(setApiHealth)
       .catch(() => setApiHealth({ success: false, message: 'Backend unreachable' }));
-  }, []);
+
+    if (user?.role === 'provider') {
+      api.getProviderProfile()
+        .then(res => {
+          if (res.status === 200 && res.data.provider) {
+            setProviderProfile(res.data.provider);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   const activeUser = profileData || user;
 
@@ -54,13 +70,13 @@ export const Dashboard = () => {
         <div className="welcome-text">
           <div className="welcome-tag">
             <ShieldCheck size={16} />
-            <span>Authenticated Session (Day 2 Verified)</span>
+            <span>Authenticated Session (Day 2 & Day 3 Ready)</span>
           </div>
           <h1 className="welcome-title">
             Welcome back, <span className="highlight-name">{activeUser?.name || 'User'}</span>!
           </h1>
           <p className="welcome-subtitle">
-            You are securely logged in with a validated JSON Web Token.
+            You are securely logged in as a <strong>{activeUser?.role === 'provider' ? 'Service Provider' : 'Customer'}</strong> with a validated JWT.
           </p>
         </div>
 
@@ -83,7 +99,104 @@ export const Dashboard = () => {
         </div>
       )}
 
-      {/* Main Grid */}
+      {/* Day 3 Provider Quick Action Cards (If Provider) */}
+      {activeUser?.role === 'provider' ? (
+        <div className="card provider-quick-hub-card">
+          <div className="card-header">
+            <div className="title-with-icon">
+              <Sparkles size={20} className="text-accent" />
+              <h3 className="card-title">Provider Management Center (Day 3)</h3>
+            </div>
+            <span className="badge-badge">Provider Portal</span>
+          </div>
+
+          <div className="provider-hub-grid">
+            <div 
+              className="hub-action-box" 
+              onClick={() => onNavigate && onNavigate('provider-profile')}
+            >
+              <div className="hub-box-icon">
+                <Building2 size={24} />
+              </div>
+              <div className="hub-box-content">
+                <h4>Provider Profile & Availability</h4>
+                <p>
+                  {providerProfile 
+                    ? `Business: ${providerProfile.business_name} (${providerProfile.is_available ? 'Available' : 'Busy'})`
+                    : 'Set up your business name, contact phone, city, and on-duty availability.'}
+                </p>
+              </div>
+              <button 
+                id="dash-goto-profile-btn"
+                className="btn btn-ghost btn-sm"
+              >
+                <span>Edit Profile</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
+
+            <div 
+              className="hub-action-box" 
+              onClick={() => onNavigate && onNavigate('provider-services')}
+            >
+              <div className="hub-box-icon">
+                <Layers size={24} />
+              </div>
+              <div className="hub-box-content">
+                <h4>Service Categories & Skills</h4>
+                <p>Select which of the 15 standard local service categories your business provides.</p>
+              </div>
+              <button 
+                id="dash-goto-services-btn"
+                className="btn btn-ghost btn-sm"
+              >
+                <span>Manage Services</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
+
+            <div 
+              className="hub-action-box" 
+              onClick={() => onNavigate && onNavigate('providers')}
+            >
+              <div className="hub-box-icon">
+                <Users size={24} />
+              </div>
+              <div className="hub-box-content">
+                <h4>Public Provider Directory</h4>
+                <p>See how your profile and services appear to customers filtering by city or service.</p>
+              </div>
+              <button 
+                id="dash-goto-directory-btn"
+                className="btn btn-ghost btn-sm"
+              >
+                <span>Browse Directory</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Customer Action Card */
+        <div className="card customer-action-card">
+          <div className="customer-action-content">
+            <div className="action-text">
+              <h3>Need local help or professional services?</h3>
+              <p>Explore electricians, mechanics, plumbers, and local assistance providers in your city.</p>
+            </div>
+            <button 
+              id="dash-customer-find-btn"
+              className="btn btn-primary btn-lg"
+              onClick={() => onNavigate && onNavigate('providers')}
+            >
+              <Users size={18} />
+              <span>Browse All Service Providers &rarr;</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Grid: User Profile & Security Status */}
       <div className="dashboard-grid">
         {/* User Profile Card */}
         <div className="card profile-card">
@@ -156,8 +269,8 @@ export const Dashboard = () => {
         {/* Verification Matrix Status Card */}
         <div className="card status-card">
           <div className="card-header">
-            <h3 className="card-title">Day 2 Security Status</h3>
-            <span className="status-indicator-badge live">Live & Secure</span>
+            <h3 className="card-title">Day 3 System Status</h3>
+            <span className="status-indicator-badge live">Operational</span>
           </div>
 
           <div className="card-body">
@@ -165,35 +278,35 @@ export const Dashboard = () => {
               <div className="check-row">
                 <CheckCircle2 size={18} className="check-icon text-success" />
                 <div className="check-info">
-                  <strong>Bcrypt Hashing:</strong> Passwords hashed with salt rounds in MySQL
+                  <strong>Provider Profile API:</strong> Protected with JWT + Provider role check (HTTP 403 on Customer)
                 </div>
               </div>
 
               <div className="check-row">
                 <CheckCircle2 size={18} className="check-icon text-success" />
                 <div className="check-info">
-                  <strong>JWT Generation:</strong> Signed token stored in client localStorage
+                  <strong>Service Categories:</strong> 15 standard seeded categories available via public API
                 </div>
               </div>
 
               <div className="check-row">
                 <CheckCircle2 size={18} className="check-icon text-success" />
                 <div className="check-info">
-                  <strong>Protected Route:</strong> <code>GET /api/auth/me</code> authenticated via middleware
+                  <strong>Provider Services Mapping:</strong> Multi-service selection with duplicate prevention
                 </div>
               </div>
 
               <div className="check-row">
                 <CheckCircle2 size={18} className="check-icon text-success" />
                 <div className="check-info">
-                  <strong>Role Isolation:</strong> Customer vs Provider roles properly assigned
+                  <strong>Public Directory:</strong> City and Service filters without sensitive credential leakage
                 </div>
               </div>
 
               <div className="check-row">
                 <CheckCircle2 size={18} className="check-icon text-success" />
                 <div className="check-info">
-                  <strong>No Leakage:</strong> Passwords excluded from all API responses
+                  <strong>Security Guardrail:</strong> <code>is_verified</code> read-only and preserved
                 </div>
               </div>
             </div>
