@@ -1,5 +1,13 @@
 const { pool } = require('./db');
 
+const tableExists = async (connection, tableName) => {
+  const [rows] = await connection.query(
+    'SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? LIMIT 1',
+    [tableName]
+  );
+  return rows.length > 0;
+};
+
 const initialCategories = [
   { name: 'Electrician', description: 'Electrical repair, wiring, and installation' },
   { name: 'Plumber', description: 'Plumbing fixtures, pipe leakages, and water line repair' },
@@ -23,6 +31,11 @@ async function migrate() {
   const connection = await pool.getConnection();
 
   try {
+    const usersTableExists = await tableExists(connection, 'users');
+    if (!usersTableExists) {
+      throw new Error('Required users table not found. Run the Day 1/2 schema migration before Day 3 migration.');
+    }
+
     // 1. Create provider_profiles table
     await connection.query(`
       CREATE TABLE IF NOT EXISTS provider_profiles (
